@@ -1,71 +1,126 @@
-import { useState } from "react";
-import {
-    FlatList,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
-} from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View, } from "react-native";
+import { loadFruits as readFruits, saveFruits, } from "../infraestructure/fruitStorage";
 import { AddFruit, type FruitFormValues } from "./components/addFruit";
 import { DeleteFruit } from "./components/deleteFruit";
 import type { Fruit } from "./components/fruit";
 import { ReadFruit } from "./components/readFruit";
 import { UpdateFruit } from "./components/updateFruit";
 
-interface InventoryViewProps {
-	fruits?: Fruit[];
-	onAddFruit?: (values: FruitFormValues) => void;
-	onUpdateFruit?: (fruit: Fruit, values: FruitFormValues) => void;
-	onDeleteFruit?: (fruit: Fruit) => void;
-}
-
-export function InventoryView({
-	fruits = [],
-	onAddFruit,
-	onUpdateFruit,
-	onDeleteFruit,
-}: InventoryViewProps) {
+export function InventoryView() {
+	const { width } = useWindowDimensions();
+	const isCompact = width < 420;
+	const [fruits, setFruits] = useState<Fruit[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [isSaving, setIsSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [loadAttempt, setLoadAttempt] = useState(0);
 	const [addVisible, setAddVisible] = useState(false);
 	const [fruitToUpdate, setFruitToUpdate] = useState<Fruit | null>(null);
 	const [fruitToDelete, setFruitToDelete] = useState<Fruit | null>(null);
+	const savingRef = useRef(false);
 
-	const submitNewFruit = (values: FruitFormValues) => {
-		onAddFruit?.(values);
-		setAddVisible(false);
-	};
+	useEffect(() => {
+		let cancelled = false;
+		readFruits()
+			.then((savedFruits) => {
+				if (!cancelled) {
+					setFruits(savedFruits);
+					setError(null);
+				}
+			})
+			.catch((loadError: unknown) => {
+				if (!cancelled) {
+					console.error("No se pudo cargar el inventario de frutas.", loadError);
+					setError("No se pudo cargar el inventario. Intenta de nuevo.");
+				}
+			})
+			.finally(() => {
+				if (!cancelled) {
+					setIsLoading(false);
+				}
+			});
 
-	const submitFruitUpdate = (values: FruitFormValues) => {
-		if (fruitToUpdate) {
-			onUpdateFruit?.(fruitToUpdate, values);
-			setFruitToUpdate(null);
+		return () => {
+			cancelled = true;
+		};
+	}, [loadAttempt]);
+
+	const persistFruits = async (updatedFruits: Fruit[]) => {
+		if (savingRef.current) {
+			return false;
+		}
+
+		savingRef.current = true;
+		setIsSaving(true);
+		setError(null);
+		try {
+			await saveFruits(updatedFruits);
+			setFruits(updatedFruits);
+			return true;
+		} catch (saveError) {
+			console.error("No se pudo guardar el inventario de frutas.", saveError);
+			setError("No se pudieron guardar los cambios. Intenta de nuevo.");
+			return false;
+		} finally {
+			savingRef.current = false;
+			setIsSaving(false);
 		}
 	};
 
-	const confirmFruitDeletion = () => {
+	const submitNewFruit = async (values: FruitFormValues) => {
+		const fruit: Fruit = {
+			...values,
+			id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+		};
+		if (await persistFruits([...fruits, fruit])) {
+			setAddVisible(false);
+		}
+	};
+
+	const submitFruitUpdate = async (values: FruitFormValues) => {
+		if (fruitToUpdate) {
+			const updatedFruits = fruits.map((fruit) =>
+				fruit.id === fruitToUpdate.id ? { ...fruit, ...values } : fruit,
+			);
+			if (await persistFruits(updatedFruits)) {
+				setFruitToUpdate(null);
+			}
+		}
+	};
+
+	const confirmFruitDeletion = async () => {
 		if (fruitToDelete) {
-			onDeleteFruit?.(fruitToDelete);
-			setFruitToDelete(null);
+			const updatedFruits = fruits.filter(
+				(fruit) => fruit.id !== fruitToDelete.id,
+			);
+			if (await persistFruits(updatedFruits)) {
+				setFruitToDelete(null);
+			}
 		}
 	};
 
 	return (
 		<View style={styles.container}>
-			<View style={styles.header}>
-				<View>
+			<View style={[styles.header, isCompact && styles.compactHeader]}>
+				<View style={styles.headerText}>
 					<Text style={styles.eyebrow}>CONTROL DE EXISTENCIAS</Text>
 					<Text style={styles.title}>Inventario</Text>
 					<Text style={styles.subtitle}>
-						Administra las frutas disponibles.
+						Administra las frutas disponibles; se guardan en este dispositivo.
 					</Text>
 				</View>
 				<Pressable
 					accessibilityRole="button"
+					disabled={isLoading || Boolean(error) || isSaving}
 					onPress={() => {
 						setFruitToDelete(null);
 						setAddVisible(true);
 					}}
 					style={({ pressed }) => [
 						styles.addButton,
+						isCompact && styles.compactAddButton,
+						(isLoading || Boolean(error) || isSaving) && styles.disabled,
 						pressed && styles.pressed,
 					]}
 				>
@@ -73,40 +128,66 @@ export function InventoryView({
 				</Pressable>
 			</View>
 
+			{error && (
+				<View accessibilityRole="alert" style={styles.errorCard}>
+					<Text style={styles.errorText}>{error}</Text>
+					{isLoading === false && fruits.length === 0 && (
+						<Pressable
+							accessibilityRole="button"
+							onPress={() => {
+								setIsLoading(true);
+								setError(null);
+								setLoadAttempt((attempt) => attempt + 1);
+							}}
+							style={styles.retryButton}
+						>
+							<Text style={styles.retryText}>Reintentar</Text>
+						</Pressable>
+					)}
+				</View>
+			)}
+
 			<DeleteFruit
 				fruit={fruitToDelete}
 				onCancel={() => setFruitToDelete(null)}
 				onConfirm={confirmFruitDeletion}
 			/>
 
-			<FlatList
-				contentContainerStyle={[
-					styles.listContent,
-					fruits.length === 0 && styles.emptyListContent,
-				]}
-				data={fruits}
-				keyExtractor={(fruit) => fruit.id}
-				ListEmptyComponent={
-					<View style={styles.emptyCard}>
-						<Text style={styles.emptyEmoji}>🍐</Text>
-						<Text style={styles.emptyTitle}>Aún no hay frutas</Text>
-						<Text style={styles.emptyText}>
-							Agrega una fruta para verla en esta lista.
-						</Text>
-					</View>
-				}
-				renderItem={({ item }) => (
-					<ReadFruit
-						fruit={item}
-						onDelete={setFruitToDelete}
-						onEdit={(fruit) => {
-							setFruitToDelete(null);
-							setFruitToUpdate(fruit);
-						}}
-					/>
-				)}
-				showsVerticalScrollIndicator={false}
-			/>
+			{isLoading ? (
+				<View style={styles.loading}>
+					<ActivityIndicator color="#27836F" />
+					<Text style={styles.loadingText}>Cargando inventario...</Text>
+				</View>
+			) : !error ? (
+				<FlatList
+					contentContainerStyle={[
+						styles.listContent,
+						fruits.length === 0 && styles.emptyListContent,
+					]}
+					data={fruits}
+					keyExtractor={(fruit) => fruit.id}
+					ListEmptyComponent={
+						<View style={styles.emptyCard}>
+							<Text style={styles.emptyEmoji}>🍐</Text>
+							<Text style={styles.emptyTitle}>Aún no hay frutas</Text>
+							<Text style={styles.emptyText}>
+								Agrega una fruta para verla en esta lista.
+							</Text>
+						</View>
+					}
+					renderItem={({ item }) => (
+						<ReadFruit
+							fruit={item}
+							onDelete={setFruitToDelete}
+							onEdit={(fruit) => {
+								setFruitToDelete(null);
+								setFruitToUpdate(fruit);
+							}}
+						/>
+					)}
+					showsVerticalScrollIndicator={false}
+				/>
+			) : null}
 
 			{addVisible && (
 				<AddFruit
@@ -132,13 +213,22 @@ const styles = StyleSheet.create({
 		backgroundColor: "#F3F8F7",
 		flex: 1,
 		paddingHorizontal: 18,
-		paddingTop: 28,
+		paddingTop: Platform.OS === "web" ? 88 : 28,
 	},
 	header: {
 		alignItems: "center",
 		flexDirection: "row",
+		gap: 12,
 		justifyContent: "space-between",
 		marginBottom: 24,
+	},
+	compactHeader: {
+		alignItems: "flex-start",
+		flexDirection: "column",
+	},
+	headerText: {
+		flex: 1,
+		minWidth: 0,
 	},
 	eyebrow: {
 		color: "#39806E",
@@ -166,10 +256,49 @@ const styles = StyleSheet.create({
 		minHeight: 46,
 		paddingHorizontal: 14,
 	},
+	compactAddButton: {
+		alignSelf: "flex-start",
+		marginLeft: 0,
+	},
 	addButtonText: {
 		color: "#FFFFFF",
 		fontSize: 14,
 		fontWeight: "700",
+	},
+	disabled: {
+		opacity: 0.55,
+	},
+	errorCard: {
+		backgroundColor: "#FFF1ED",
+		borderColor: "#F2C9BE",
+		borderRadius: 12,
+		borderWidth: 1,
+		marginBottom: 16,
+		padding: 14,
+	},
+	errorText: {
+		color: "#7E3429",
+		fontSize: 14,
+	},
+	retryButton: {
+		alignSelf: "flex-start",
+		marginTop: 8,
+		paddingVertical: 4,
+	},
+	retryText: {
+		color: "#A84334",
+		fontSize: 14,
+		fontWeight: "700",
+	},
+	loading: {
+		alignItems: "center",
+		flex: 1,
+		gap: 10,
+		justifyContent: "center",
+	},
+	loadingText: {
+		color: "#667A7F",
+		fontSize: 14,
 	},
 	listContent: {
 		paddingBottom: 24,

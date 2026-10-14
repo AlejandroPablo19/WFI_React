@@ -1,15 +1,5 @@
 import { useState } from "react";
-import {
-	KeyboardAvoidingView,
-	Modal,
-	Platform,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TextInput,
-	View,
-} from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, } from "react-native";
 import type { Fruit } from "./fruit";
 
 export type FruitFormValues = Omit<Fruit, "id">;
