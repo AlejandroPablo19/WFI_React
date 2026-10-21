@@ -2,7 +2,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Delivery, DeliveryStatus } from "../../domain/entities/delivery";
-import { deliveryRepository } from "../../infraestructure/deliveryMockRepository";
+import { deliveryRepository } from "../../infraestructure/deliveryRepositori";
 import { getDeliveryById } from "../use-cases/getDeliveryById";
 
 const pasos = [

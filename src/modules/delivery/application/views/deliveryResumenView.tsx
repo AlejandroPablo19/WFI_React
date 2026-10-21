@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Alert, Button, StyleSheet, Text, View } from "react-native";
-import { deliveryRepository } from "../../infraestructure/deliveryMockRepository";
+import { deliveryRepository } from "../../infraestructure/deliveryRepositori";
 import { createDelivery } from "../use-cases/createDelivery";
 
 export function DeliveryResumenView() {
@@ -16,15 +16,22 @@ export function DeliveryResumenView() {
     }>();
 
   const confirmar = async () => {
-    await createDelivery(deliveryRepository, {
-      cliente,
-      repartidor,
-      direccion: `${calle}, ${colonia}`,
-      estado: "pendiente",
-      total: Number(total) || 0,
-    });
-    Alert.alert("Entrega creada", "La entrega se registró correctamente.");
-    router.dismissAll(); // vuelve a la lista de entregas
+    try {
+      await createDelivery(deliveryRepository, {
+        cliente,
+        repartidor,
+        direccion: `${calle}, ${colonia}`,
+        estado: "pendiente",
+        total: Number(total) || 0,
+      });
+      Alert.alert("Entrega creada", "La entrega se registró correctamente.");
+      router.dismissAll();
+    } catch {
+      Alert.alert(
+        "Error",
+        "No se pudo registrar la entrega. Revisa tu conexión.",
+      );
+    }
   };
 
   return (

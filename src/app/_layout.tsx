@@ -17,14 +17,14 @@
 //   );
 // }
 
+import { queryClient } from "@/core/query/query-client"; // ajusta tu ruta
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 
 export default function RootLayout() {
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="explore" options={{ title: "Explorar" }} />
-      <Stack.Screen name="delivery" options={{ headerShown: false }} />
-    </Stack>
+    <QueryClientProvider client={queryClient}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </QueryClientProvider>
   );
 }

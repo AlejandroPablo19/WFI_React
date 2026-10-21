@@ -9,16 +9,21 @@ export function DeliveryAddView() {
   const [total, setTotal] = useState("");
 
   const continuar = () => {
+    const totalNum = Number(total);
+
     if (!cliente.trim() || !repartidor.trim() || !total.trim()) {
       Alert.alert("Faltan datos", "Completa cliente, repartidor y total.");
       return;
     }
+    if (isNaN(totalNum) || totalNum <= 0) {
+      Alert.alert("Total inválido", "Ingresa un monto mayor a 0.");
+      return;
+    }
     router.push({
       pathname: "/delivery/direccion",
-      params: { cliente, repartidor, total },
+      params: { cliente: cliente.trim(), repartidor: repartidor.trim(), total },
     });
   };
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Nueva entrega</Text>

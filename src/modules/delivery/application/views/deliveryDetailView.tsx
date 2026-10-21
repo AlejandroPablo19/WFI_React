@@ -1,8 +1,15 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Button, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Button,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Delivery, estadoLabel } from "../../domain/entities/delivery";
-import { deliveryRepository } from "../../infraestructure/deliveryMockRepository";
+import { deliveryRepository } from "../../infraestructure/deliveryRepositori";
 import { deleteDelivery } from "../use-cases/deleteDelivery";
 import { getDeliveryById } from "../use-cases/getDeliveryById";
 
@@ -10,10 +17,15 @@ export function DeliveryDetailView() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [d, setD] = useState<Delivery>();
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
-      getDeliveryById(deliveryRepository, id).then(setD);
+      setLoading(true);
+      getDeliveryById(deliveryRepository, id)
+        .then(setD)
+        .catch(() => setD(undefined))
+        .finally(() => setLoading(false));
     }, [id]),
   );
 
@@ -24,11 +36,23 @@ export function DeliveryDetailView() {
         text: "Eliminar",
         style: "destructive",
         onPress: async () => {
-          await deleteDelivery(deliveryRepository, id);
-          router.back();
+          try {
+            await deleteDelivery(deliveryRepository, id);
+            router.back();
+          } catch {
+            Alert.alert("Error", "No se pudo eliminar la entrega.");
+          }
         },
       },
     ]);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   if (!d) {
     return (
@@ -48,14 +72,12 @@ export function DeliveryDetailView() {
 
       <Button
         title="Ver seguimiento"
-        onPress={() => {
-          console.log("Abriendo seguimiento, ID:", id);
-
+        onPress={() =>
           router.push({
             pathname: "/delivery/seguimiento",
             params: { id: String(id) },
-          });
-        }}
+          })
+        }
       />
       <Button
         title="Editar"

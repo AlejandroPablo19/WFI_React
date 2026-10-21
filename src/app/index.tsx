@@ -2,8 +2,6 @@
 // import { Platform, StyleSheet } from "react-native";
 // import { SafeAreaView } from "react-native-safe-area-context";
 
-import { DeliveryView } from "@/modules/delivery/application/views/deliveryView";
-
 // import { AnimatedIcon } from "@/components/animated-icon";
 // import { HintRow } from "@/components/hint-row";
 // import { ThemedText } from "@/components/themed-text";
@@ -99,6 +97,8 @@ import { DeliveryView } from "@/modules/delivery/application/views/deliveryView"
 //   },
 // });
 
-export default function DeliveryScreen() {
-  return <DeliveryView />;
+import { Redirect } from "expo-router";
+
+export default function Index() {
+  return <Redirect href="/delivery" />;
 }

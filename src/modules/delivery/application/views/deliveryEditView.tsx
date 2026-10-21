@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
-import { deliveryRepository } from "../../infraestructure/deliveryMockRepository";
+import { deliveryRepository } from "../../infraestructure/deliveryRepositori";
 import { getDeliveryById } from "../use-cases/getDeliveryById";
 import { updateDelivery } from "../use-cases/updateDelivery";
 
@@ -24,17 +24,27 @@ export function DeliveryEditView() {
   }, [id]);
 
   const guardar = async () => {
+    const totalNum = Number(total);
+
     if (!cliente.trim() || !direccion.trim() || !repartidor.trim()) {
       Alert.alert("Faltan datos", "Completa todos los campos.");
       return;
     }
-    await updateDelivery(deliveryRepository, id, {
-      cliente,
-      direccion,
-      repartidor,
-      total: Number(total) || 0,
-    });
-    router.back();
+    if (isNaN(totalNum) || totalNum <= 0) {
+      Alert.alert("Total inválido", "Ingresa un monto mayor a 0.");
+      return;
+    }
+    try {
+      await updateDelivery(deliveryRepository, id, {
+        cliente: cliente.trim(),
+        direccion: direccion.trim(),
+        repartidor: repartidor.trim(),
+        total: totalNum,
+      });
+      router.back();
+    } catch {
+      Alert.alert("Error", "No se pudieron guardar los cambios.");
+    }
   };
 
   return (

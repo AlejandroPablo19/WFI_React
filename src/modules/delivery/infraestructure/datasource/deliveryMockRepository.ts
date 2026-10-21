@@ -1,5 +1,5 @@
-import { Delivery } from "../domain/entities/delivery";
-import { DeliveryRepository } from "../domain/ports/deliveryRepository";
+import { Delivery } from "../../domain/entities/delivery";
+import { DeliveryRepository } from "../../domain/ports/deliveryRepository";
 
 let data: Delivery[] = [
   {
@@ -60,6 +60,3 @@ export class DeliveryMockRepository implements DeliveryRepository {
     data = data.filter((d) => d.id !== id);
   }
 }
-
-// Instancia compartida por todas las vistas del feature
-export const deliveryRepository = new DeliveryMockRepository();
