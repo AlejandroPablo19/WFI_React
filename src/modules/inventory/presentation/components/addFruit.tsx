@@ -1,146 +1,169 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, } from "react-native";
-import type { Fruit } from "./fruit";
+import {
+	KeyboardAvoidingView,
+	Platform,
+	Pressable,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	View,
+} from "react-native";
+import type { Fruit, FruitFormValues } from "./fruit";
 
-export type FruitFormValues = Omit<Fruit, "id">;
-
-interface FruitFormModalProps {
-	visible: boolean;
+interface FruitFormProps {
 	mode: "add" | "edit";
-	fruit?: Fruit | null;
-	onClose: () => void;
-	onSubmit: (values: FruitFormValues) => void;
+	fruit?: Fruit;
+	error: string | null;
+	isSubmitting: boolean;
+	onCancel: () => void;
+	onSubmit: (values: FruitFormValues) => Promise<void>;
 }
 
-export function FruitFormModal({
-	visible,
+export function FruitForm({
 	mode,
 	fruit,
-	onClose,
+	error,
+	isSubmitting,
+	onCancel,
 	onSubmit,
-}: FruitFormModalProps) {
+}: FruitFormProps) {
 	const [name, setName] = useState(fruit?.name ?? "");
 	const [quantity, setQuantity] = useState(fruit?.quantity ?? "");
 	const [unit, setUnit] = useState(fruit?.unit ?? "piezas");
+	const [validationError, setValidationError] = useState<string | null>(null);
 
 	const isEditing = mode === "edit";
 
 	return (
-		<Modal
-			animationType="fade"
-			transparent
-			visible={visible}
-			onRequestClose={onClose}
+		<KeyboardAvoidingView
+			behavior={Platform.OS === "ios" ? "padding" : undefined}
+			style={styles.container}
 		>
-			<KeyboardAvoidingView
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				style={styles.backdrop}
+			<ScrollView
+				contentContainerStyle={styles.screen}
+				keyboardShouldPersistTaps="handled"
 			>
-				<ScrollView
-					contentContainerStyle={styles.modalScroll}
-					keyboardShouldPersistTaps="handled"
-				>
-					<View style={styles.card}>
-						<View style={styles.heading}>
-							<Text style={styles.eyebrow}>
-								{isEditing ? "ACTUALIZAR INVENTARIO" : "NUEVO INGREDIENTE"}
-							</Text>
-							<Text style={styles.title}>
-								{isEditing ? "Editar fruta" : "Agregar fruta"}
-							</Text>
-							<Text style={styles.subtitle}>
-								{isEditing
-									? "Modifica los datos de esta fruta."
-									: "Completa los datos para agregarla al inventario."}
-							</Text>
-						</View>
-
-						<Text style={styles.label}>Nombre de la fruta</Text>
-						<TextInput
-							autoCapitalize="words"
-							onChangeText={setName}
-							placeholder="Ej. Manzana"
-							placeholderTextColor="#8A9A9E"
-							style={styles.input}
-							value={name}
-						/>
-
-						<Text style={styles.label}>Cantidad</Text>
-						<TextInput
-							keyboardType="decimal-pad"
-							onChangeText={setQuantity}
-							placeholder="Ej. 12"
-							placeholderTextColor="#8A9A9E"
-							style={styles.input}
-							value={quantity}
-						/>
-
-						<Text style={styles.label}>Unidad</Text>
-						<TextInput
-							autoCapitalize="none"
-							onChangeText={setUnit}
-							placeholder="Ej. piezas o kg"
-							placeholderTextColor="#8A9A9E"
-							style={styles.input}
-							value={unit}
-						/>
-
-						<View style={styles.actions}>
-							<Pressable
-								accessibilityRole="button"
-								onPress={onClose}
-								style={({ pressed }) => [
-									styles.secondaryButton,
-									pressed && styles.pressed,
-								]}
-							>
-								<Text style={styles.secondaryButtonText}>Cancelar</Text>
-							</Pressable>
-							<Pressable
-								accessibilityRole="button"
-								onPress={() => onSubmit({ name, quantity, unit })}
-								style={({ pressed }) => [
-									styles.primaryButton,
-									pressed && styles.pressed,
-								]}
-							>
-								<Text style={styles.primaryButtonText}>
-									{isEditing ? "Guardar cambios" : "Agregar fruta"}
-								</Text>
-							</Pressable>
-						</View>
+				<View style={styles.card}>
+					<View style={styles.heading}>
+						<Text style={styles.eyebrow}>
+							{isEditing ? "ACTUALIZAR INVENTARIO" : "NUEVO INGREDIENTE"}
+						</Text>
+						<Text style={styles.title}>
+							{isEditing ? "Editar fruta" : "Agregar fruta"}
+						</Text>
+						<Text style={styles.subtitle}>
+							{isEditing
+								? "Modifica los datos de esta fruta."
+								: "Completa los datos para agregarla al inventario."}
+						</Text>
 					</View>
-				</ScrollView>
-			</KeyboardAvoidingView>
-		</Modal>
-	);
-}
 
-export function AddFruit({
-	visible,
-	onClose,
-	onSubmit,
-}: Omit<FruitFormModalProps, "mode" | "fruit">) {
-	return (
-		<FruitFormModal
-			mode="add"
-			onClose={onClose}
-			onSubmit={onSubmit}
-			visible={visible}
-		/>
+					<Text style={styles.label}>Nombre de la fruta</Text>
+					<TextInput
+						autoCapitalize="words"
+						accessibilityLabel="Nombre de la fruta"
+						onChangeText={setName}
+						placeholder="Ej. Manzana"
+						placeholderTextColor="#8A9A9E"
+						style={styles.input}
+						value={name}
+					/>
+
+					<Text style={styles.label}>Cantidad</Text>
+					<TextInput
+						accessibilityLabel="Cantidad"
+						keyboardType="decimal-pad"
+						onChangeText={setQuantity}
+						placeholder="Ej. 12"
+						placeholderTextColor="#8A9A9E"
+						style={styles.input}
+						value={quantity}
+					/>
+
+					<Text style={styles.label}>Unidad</Text>
+					<TextInput
+						accessibilityLabel="Unidad"
+						autoCapitalize="none"
+						onChangeText={setUnit}
+						placeholder="Ej. piezas o kg"
+						placeholderTextColor="#8A9A9E"
+						style={styles.input}
+						value={unit}
+					/>
+
+					{(validationError || error) && (
+						<Text accessibilityRole="alert" style={styles.errorText}>
+							{validationError ?? error}
+						</Text>
+					)}
+
+					<View style={styles.actions}>
+						<Pressable
+							accessibilityRole="button"
+							disabled={isSubmitting}
+							onPress={onCancel}
+							style={({ pressed }) => [
+								styles.secondaryButton,
+								isSubmitting && styles.disabled,
+								pressed && styles.pressed,
+							]}
+						>
+							<Text style={styles.secondaryButtonText}>Cancelar</Text>
+						</Pressable>
+						<Pressable
+							accessibilityRole="button"
+							disabled={isSubmitting}
+							onPress={() => {
+								const normalizedValues = {
+									name: name.trim(),
+									quantity: quantity.trim(),
+									unit: unit.trim(),
+								};
+								if (
+									!normalizedValues.name ||
+									!normalizedValues.quantity ||
+									!normalizedValues.unit ||
+									!Number.isFinite(Number(normalizedValues.quantity)) ||
+									Number(normalizedValues.quantity) < 0
+								) {
+									setValidationError(
+										"Ingresa nombre, cantidad válida y unidad.",
+									);
+									return;
+								}
+								setValidationError(null);
+								void onSubmit(normalizedValues);
+							}}
+							style={({ pressed }) => [
+								styles.primaryButton,
+								isSubmitting && styles.disabled,
+								pressed && styles.pressed,
+							]}
+						>
+							<Text style={styles.primaryButtonText}>
+								{isSubmitting
+									? "Guardando..."
+									: isEditing
+										? "Guardar cambios"
+										: "Agregar fruta"}
+							</Text>
+						</Pressable>
+					</View>
+				</View>
+			</ScrollView>
+		</KeyboardAvoidingView>
 	);
 }
 
 const styles = StyleSheet.create({
-	backdrop: {
-		backgroundColor: "rgba(17, 45, 49, 0.48)",
+	container: {
 		flex: 1,
-		justifyContent: "center",
-		padding: 20,
 	},
-	modalScroll: {
+	screen: {
 		flexGrow: 1,
-		justifyContent: "center",
+		padding: 18,
+		paddingBottom: 32,
 	},
 	card: {
 		backgroundColor: "#FFFFFF",
@@ -225,6 +248,15 @@ const styles = StyleSheet.create({
 		color: "#35575D",
 		fontSize: 14,
 		fontWeight: "700",
+	},
+	errorText: {
+		color: "#A84334",
+		fontSize: 14,
+		lineHeight: 20,
+		marginTop: 14,
+	},
+	disabled: {
+		opacity: 0.55,
 	},
 	pressed: {
 		opacity: 0.78,

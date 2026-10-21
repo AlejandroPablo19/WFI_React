@@ -3,11 +3,17 @@ import type { Fruit } from "./fruit";
 
 interface DeleteFruitProps {
 	fruit: Fruit | null;
+	isProcessing?: boolean;
 	onCancel: () => void;
 	onConfirm: () => void;
 }
 
-export function DeleteFruit({ fruit, onCancel, onConfirm }: DeleteFruitProps) {
+export function DeleteFruit({
+	fruit,
+	isProcessing = false,
+	onCancel,
+	onConfirm,
+}: DeleteFruitProps) {
 	if (!fruit) {
 		return null;
 	}
@@ -25,25 +31,33 @@ export function DeleteFruit({ fruit, onCancel, onConfirm }: DeleteFruitProps) {
 				<View style={styles.actions}>
 					<Pressable
 						accessibilityRole="button"
+						disabled={isProcessing}
 						onPress={onCancel}
 						style={({ pressed }) => [
 							styles.button,
 							styles.cancelButton,
+							isProcessing && styles.disabled,
 							pressed && styles.pressed,
 						]}
 					>
-						<Text style={styles.cancelText}>Cancelar</Text>
+						<Text style={styles.cancelText}>
+							{isProcessing ? "Procesando..." : "Cancelar"}
+						</Text>
 					</Pressable>
 					<Pressable
 						accessibilityRole="button"
+						disabled={isProcessing}
 						onPress={onConfirm}
 						style={({ pressed }) => [
 							styles.button,
 							styles.confirmButton,
+							isProcessing && styles.disabled,
 							pressed && styles.pressed,
 						]}
 					>
-						<Text style={styles.confirmText}>Sí, eliminar</Text>
+						<Text style={styles.confirmText}>
+							{isProcessing ? "Eliminando..." : "Sí, eliminar"}
+						</Text>
 					</Pressable>
 				</View>
 			</View>
@@ -121,5 +135,8 @@ const styles = StyleSheet.create({
 	},
 	pressed: {
 		opacity: 0.75,
+	},
+	disabled: {
+		opacity: 0.55,
 	},
 });

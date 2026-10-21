@@ -4,3 +4,5 @@ export interface Fruit {
 	quantity: string;
 	unit: string;
 }
+
+export type FruitFormValues = Omit<Fruit, "id">;

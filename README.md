@@ -54,3 +54,24 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Inventory module
+
+The Inventory screen reads the `fruits` collection from the configured Firebase
+Cloud Firestore project and listens for live changes. Each document must have
+`name` (string), `quantity` (number or string), and `unit` (string) fields; the
+document ID is used as the fruit ID. Add, edit, and delete actions write to the
+same collection. Navigation uses a stack: inventory list, `/inventory/add`, and
+`/inventory/[id]` for editing or deleting a fruit.
+
+Create the Firestore database and configure its security rules to authorize the
+intended app users before running the Inventory module. The app reports denied
+reads or writes instead of falling back to local data.
+
+For a temporary classroom demo without sign-in, publish the rules in
+[`firestore.rules`](./firestore.rules) from the Firebase Console under Firestore
+Database > Rules. They grant public access only to `fruits`, validate its
+fields, and expire on October 28, 2026. Anyone who knows the public Firebase app
+configuration can read or modify this demo inventory until then. Do not use
+these rules for production; configure Firebase Authentication and replace them
+with user-scoped access rules first.

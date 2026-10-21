@@ -1,26 +1,29 @@
-import { FruitFormModal, type FruitFormValues } from "./addFruit";
-import type { Fruit } from "./fruit";
+import { FruitForm } from "./addFruit";
+import type { Fruit, FruitFormValues } from "./fruit";
 
 interface UpdateFruitProps {
-	visible: boolean;
 	fruit: Fruit;
-	onClose: () => void;
-	onSubmit: (values: FruitFormValues) => void;
+	error: string | null;
+	isSubmitting: boolean;
+	onCancel: () => void;
+	onSubmit: (values: FruitFormValues) => Promise<void>;
 }
 
 export function UpdateFruit({
-	visible,
 	fruit,
-	onClose,
+	error,
+	isSubmitting,
+	onCancel,
 	onSubmit,
 }: UpdateFruitProps) {
 	return (
-		<FruitFormModal
+		<FruitForm
+			error={error}
 			fruit={fruit}
+			isSubmitting={isSubmitting}
 			mode="edit"
-			onClose={onClose}
+			onCancel={onCancel}
 			onSubmit={onSubmit}
-			visible={visible}
 		/>
 	);
 }

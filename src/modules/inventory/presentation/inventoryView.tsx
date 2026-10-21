@@ -1,126 +1,86 @@
-import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View, } from "react-native";
-import { loadFruits as readFruits, saveFruits, } from "../infraestructure/fruitStorage";
-import { AddFruit, type FruitFormValues } from "./components/addFruit";
+import { useEffect, useState } from "react";
+import {
+	ActivityIndicator,
+	FlatList,
+	Platform,
+	Pressable,
+	StyleSheet,
+	Text,
+	useWindowDimensions,
+	View,
+} from "react-native";
+import { router, type Href } from "expo-router";
+import {
+	deleteFruit,
+	subscribeToFruits,
+} from "../infraestructure/fruitRepository";
 import { DeleteFruit } from "./components/deleteFruit";
 import type { Fruit } from "./components/fruit";
 import { ReadFruit } from "./components/readFruit";
-import { UpdateFruit } from "./components/updateFruit";
 
 export function InventoryView() {
 	const { width } = useWindowDimensions();
 	const isCompact = width < 420;
 	const [fruits, setFruits] = useState<Fruit[]>([]);
+	const [fruitToDelete, setFruitToDelete] = useState<Fruit | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
-	const [isSaving, setIsSaving] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [loadAttempt, setLoadAttempt] = useState(0);
-	const [addVisible, setAddVisible] = useState(false);
-	const [fruitToUpdate, setFruitToUpdate] = useState<Fruit | null>(null);
-	const [fruitToDelete, setFruitToDelete] = useState<Fruit | null>(null);
-	const savingRef = useRef(false);
 
 	useEffect(() => {
-		let cancelled = false;
-		readFruits()
-			.then((savedFruits) => {
-				if (!cancelled) {
-					setFruits(savedFruits);
-					setError(null);
-				}
-			})
-			.catch((loadError: unknown) => {
-				if (!cancelled) {
-					console.error("No se pudo cargar el inventario de frutas.", loadError);
-					setError("No se pudo cargar el inventario. Intenta de nuevo.");
-				}
-			})
-			.finally(() => {
-				if (!cancelled) {
-					setIsLoading(false);
-				}
-			});
+		const unsubscribe = subscribeToFruits(
+			(updatedFruits) => {
+				setFruits(updatedFruits);
+				setError(null);
+				setIsLoading(false);
+			},
+			(loadError) => {
+				console.error("No se pudo cargar el inventario desde Firestore.", loadError);
+				setError(
+					"No se pudo cargar el inventario desde Firestore. Revisa tu conexión y los permisos de la colección.",
+				);
+				setIsLoading(false);
+			},
+		);
 
-		return () => {
-			cancelled = true;
-		};
+		return unsubscribe;
 	}, [loadAttempt]);
 
-	const persistFruits = async (updatedFruits: Fruit[]) => {
-		if (savingRef.current) {
-			return false;
+	const confirmFruitDeletion = async () => {
+		if (!fruitToDelete || isDeleting) {
+			return;
 		}
 
-		savingRef.current = true;
-		setIsSaving(true);
+		setIsDeleting(true);
 		setError(null);
 		try {
-			await saveFruits(updatedFruits);
-			setFruits(updatedFruits);
-			return true;
-		} catch (saveError) {
-			console.error("No se pudo guardar el inventario de frutas.", saveError);
-			setError("No se pudieron guardar los cambios. Intenta de nuevo.");
-			return false;
+			await deleteFruit(fruitToDelete.id);
+			setFruitToDelete(null);
+		} catch (deleteError) {
+			console.error("No se pudo eliminar la fruta de Firestore.", deleteError);
+			setError("No se pudo eliminar la fruta. Revisa los permisos e intenta de nuevo.");
 		} finally {
-			savingRef.current = false;
-			setIsSaving(false);
-		}
-	};
-
-	const submitNewFruit = async (values: FruitFormValues) => {
-		const fruit: Fruit = {
-			...values,
-			id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-		};
-		if (await persistFruits([...fruits, fruit])) {
-			setAddVisible(false);
-		}
-	};
-
-	const submitFruitUpdate = async (values: FruitFormValues) => {
-		if (fruitToUpdate) {
-			const updatedFruits = fruits.map((fruit) =>
-				fruit.id === fruitToUpdate.id ? { ...fruit, ...values } : fruit,
-			);
-			if (await persistFruits(updatedFruits)) {
-				setFruitToUpdate(null);
-			}
-		}
-	};
-
-	const confirmFruitDeletion = async () => {
-		if (fruitToDelete) {
-			const updatedFruits = fruits.filter(
-				(fruit) => fruit.id !== fruitToDelete.id,
-			);
-			if (await persistFruits(updatedFruits)) {
-				setFruitToDelete(null);
-			}
+			setIsDeleting(false);
 		}
 	};
 
 	return (
-		<View style={styles.container}>
+		<View style={[styles.container, isCompact && styles.compactContainer]}>
 			<View style={[styles.header, isCompact && styles.compactHeader]}>
 				<View style={styles.headerText}>
 					<Text style={styles.eyebrow}>CONTROL DE EXISTENCIAS</Text>
 					<Text style={styles.title}>Inventario</Text>
 					<Text style={styles.subtitle}>
-						Administra las frutas disponibles; se guardan en este dispositivo.
+						Frutas sincronizadas en tiempo real con Firebase.
 					</Text>
 				</View>
 				<Pressable
 					accessibilityRole="button"
-					disabled={isLoading || Boolean(error) || isSaving}
-					onPress={() => {
-						setFruitToDelete(null);
-						setAddVisible(true);
-					}}
+					onPress={() => router.push("/inventory/add" as Href)}
 					style={({ pressed }) => [
 						styles.addButton,
 						isCompact && styles.compactAddButton,
-						(isLoading || Boolean(error) || isSaving) && styles.disabled,
 						pressed && styles.pressed,
 					]}
 				>
@@ -131,26 +91,25 @@ export function InventoryView() {
 			{error && (
 				<View accessibilityRole="alert" style={styles.errorCard}>
 					<Text style={styles.errorText}>{error}</Text>
-					{isLoading === false && fruits.length === 0 && (
-						<Pressable
-							accessibilityRole="button"
-							onPress={() => {
-								setIsLoading(true);
-								setError(null);
-								setLoadAttempt((attempt) => attempt + 1);
-							}}
-							style={styles.retryButton}
-						>
-							<Text style={styles.retryText}>Reintentar</Text>
-						</Pressable>
-					)}
+					<Pressable
+						accessibilityRole="button"
+						onPress={() => {
+							setError(null);
+							setIsLoading(true);
+							setLoadAttempt((attempt) => attempt + 1);
+						}}
+						style={styles.retryButton}
+					>
+						<Text style={styles.retryText}>Reintentar</Text>
+					</Pressable>
 				</View>
 			)}
 
 			<DeleteFruit
 				fruit={fruitToDelete}
+				isProcessing={isDeleting}
 				onCancel={() => setFruitToDelete(null)}
-				onConfirm={confirmFruitDeletion}
+				onConfirm={() => void confirmFruitDeletion()}
 			/>
 
 			{isLoading ? (
@@ -158,7 +117,7 @@ export function InventoryView() {
 					<ActivityIndicator color="#27836F" />
 					<Text style={styles.loadingText}>Cargando inventario...</Text>
 				</View>
-			) : !error ? (
+			) : error ? null : (
 				<FlatList
 					contentContainerStyle={[
 						styles.listContent,
@@ -179,29 +138,14 @@ export function InventoryView() {
 						<ReadFruit
 							fruit={item}
 							onDelete={setFruitToDelete}
-							onEdit={(fruit) => {
-								setFruitToDelete(null);
-								setFruitToUpdate(fruit);
-							}}
+							onEdit={(fruit) =>
+								router.push(
+									`/inventory/${encodeURIComponent(fruit.id)}` as Href,
+								)
+							}
 						/>
 					)}
 					showsVerticalScrollIndicator={false}
-				/>
-			) : null}
-
-			{addVisible && (
-				<AddFruit
-					onClose={() => setAddVisible(false)}
-					onSubmit={submitNewFruit}
-					visible
-				/>
-			)}
-			{fruitToUpdate && (
-				<UpdateFruit
-					fruit={fruitToUpdate}
-					onClose={() => setFruitToUpdate(null)}
-					onSubmit={submitFruitUpdate}
-					visible
 				/>
 			)}
 		</View>
@@ -213,7 +157,10 @@ const styles = StyleSheet.create({
 		backgroundColor: "#F3F8F7",
 		flex: 1,
 		paddingHorizontal: 18,
-		paddingTop: Platform.OS === "web" ? 88 : 28,
+		paddingTop: Platform.OS === "web" ? 24 : 16,
+	},
+	compactContainer: {
+		paddingHorizontal: 14,
 	},
 	header: {
 		alignItems: "center",
@@ -264,9 +211,6 @@ const styles = StyleSheet.create({
 		color: "#FFFFFF",
 		fontSize: 14,
 		fontWeight: "700",
-	},
-	disabled: {
-		opacity: 0.55,
 	},
 	errorCard: {
 		backgroundColor: "#FFF1ED",

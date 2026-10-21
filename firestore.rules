@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function demoAccessIsActive() {
+      return request.time < timestamp.date(2026, 10, 28);
+    }
+
+    function validFruit() {
+      return request.resource.data.keys().hasAll(['name', 'quantity', 'unit'])
+        && request.resource.data.keys().hasOnly(['name', 'quantity', 'unit'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.unit is string
+        && request.resource.data.unit.size() > 0
+        && request.resource.data.unit.size() <= 30
+        && (
+          (
+            request.resource.data.quantity is string
+            && request.resource.data.quantity.size() > 0
+            && request.resource.data.quantity.size() <= 20
+          )
+          || (
+            request.resource.data.quantity is int
+            && request.resource.data.quantity >= 0
+          )
+          || (
+            request.resource.data.quantity is float
+            && request.resource.data.quantity >= 0
+          )
+        );
+    }
+
+    match /fruits/{fruitId} {
+      allow read: if demoAccessIsActive();
+      allow create, update: if demoAccessIsActive() && validFruit();
+      allow delete: if demoAccessIsActive();
+    }
+  }
+}
