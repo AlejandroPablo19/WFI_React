@@ -2,9 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -13,6 +11,9 @@ import {
 import { Delivery, estadoLabel } from "../../domain/entities/delivery";
 
 import { deliveryRepository } from "../../infraestructure/deliveryRepositori";
+import { DeliveryButton } from "../../shared/components/deliveryButton";
+import { colors } from "../../shared/theme/colors";
+import { mostrarAlerta } from "../../shared/utils/mostrarAlerta";
 import { deleteDelivery } from "../use-cases/deleteDelivery";
 import { getDeliveries } from "../use-cases/getDelivery";
 
@@ -21,7 +22,7 @@ export function DeliveryView() {
 
   const [items, setItems] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // solo errores de carga
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [idPorEliminar, setIdPorEliminar] = useState<string | null>(null);
 
@@ -48,7 +49,6 @@ export function DeliveryView() {
 
   // Mostrar el recuadro de confirmación.
   const eliminar = (id: string) => {
-    console.log("Eliminar presionado:", id);
     setIdPorEliminar(id);
   };
 
@@ -60,7 +60,6 @@ export function DeliveryView() {
 
     const id = idPorEliminar;
     setDeletingId(id);
-    setError(null);
 
     try {
       await deleteDelivery(deliveryRepository, id);
@@ -70,13 +69,23 @@ export function DeliveryView() {
       );
 
       setIdPorEliminar(null);
+      setDeletingId(null);
+
+      // Sin await: no bloquea la UI mientras la alerta está abierta.
+      void mostrarAlerta(
+        "Entrega eliminada",
+        "La entrega se eliminó correctamente.",
+      );
     } catch (err) {
       console.error("Error al eliminar la entrega:", err);
-      setError(
-        "No se pudo eliminar la entrega. Comprueba el backend y el repositorio.",
-      );
-    } finally {
+
+      setIdPorEliminar(null);
       setDeletingId(null);
+
+      void mostrarAlerta(
+        "Error al eliminar",
+        "No se pudo eliminar la entrega. Inténtalo de nuevo.",
+      );
     }
   };
 
@@ -90,29 +99,30 @@ export function DeliveryView() {
             ¿Deseas eliminar la entrega {idPorEliminar}?
           </Text>
 
-          <Button
+          <DeliveryButton
             title={
               deletingId === idPorEliminar ? "Eliminando..." : "Sí, eliminar"
             }
-            color="#c0392b"
+            variant="danger"
             disabled={deletingId !== null}
             onPress={() => void confirmarEliminacion()}
           />
 
-          <Button
+          <DeliveryButton
             title="Cancelar"
+            variant="secondary"
             disabled={deletingId !== null}
             onPress={() => setIdPorEliminar(null)}
           />
         </View>
       )}
 
-      {loading && <ActivityIndicator size="large" />}
+      {loading && <ActivityIndicator size="large" color={colors.primary} />}
 
       {error !== null && (
         <View style={styles.errorContainer}>
           <Text style={styles.error}>{error}</Text>
-          <Button title="Reintentar" onPress={() => void cargar()} />
+          <DeliveryButton title="Reintentar" onPress={() => void cargar()} />
         </View>
       )}
 
@@ -127,14 +137,7 @@ export function DeliveryView() {
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: "/delivery/[id]",
-                    params: { id: String(item.id) },
-                  })
-                }
-              >
+              <View>
                 <Text style={styles.name}>{item.cliente}</Text>
 
                 <Text style={styles.sub}>
@@ -142,10 +145,10 @@ export function DeliveryView() {
                 </Text>
 
                 <Text style={styles.total}>Total: ${item.total}</Text>
-              </Pressable>
+              </View>
 
               <View style={styles.buttonContainer}>
-                <Button
+                <DeliveryButton
                   title="Ver detalles"
                   onPress={() =>
                     router.push({
@@ -155,9 +158,9 @@ export function DeliveryView() {
                   }
                 />
 
-                <Button
+                <DeliveryButton
                   title="Eliminar"
-                  color="#c0392b"
+                  variant="danger"
                   disabled={deletingId !== null}
                   onPress={() => eliminar(String(item.id))}
                 />
@@ -168,12 +171,13 @@ export function DeliveryView() {
       )}
 
       <View style={styles.footer}>
-        <Button
+        <DeliveryButton
           title="Historial"
+          variant="secondary"
           onPress={() => router.push("/delivery/historial")}
         />
 
-        <Button
+        <DeliveryButton
           title="Nueva entrega"
           onPress={() => router.push("/delivery/add")}
         />
@@ -186,33 +190,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.background,
   },
   title: {
-    color: "#d82222",
+    color: colors.title,
     marginBottom: 10,
     textAlign: "center",
     fontSize: 20,
     fontWeight: "bold",
   },
   card: {
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: "#1947a4",
-    borderRadius: 8,
-    padding: 12,
+    borderColor: colors.border,
+    borderRadius: 16,
+    padding: 14,
     marginBottom: 10,
     gap: 10,
   },
   name: {
     fontSize: 16,
     fontWeight: "600",
+    color: colors.title,
   },
   sub: {
-    color: "#666666",
+    color: colors.muted,
     marginTop: 4,
   },
   total: {
-    color: "#1947a4",
+    color: colors.primary,
     fontWeight: "bold",
     marginTop: 6,
   },
@@ -227,25 +233,26 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#c0392b",
-    borderRadius: 8,
+    borderColor: colors.danger,
+    borderRadius: 16,
     gap: 8,
-    backgroundColor: "#fff5f5",
+    backgroundColor: colors.dangerSoft,
   },
   confirmacionTexto: {
     fontSize: 16,
     marginBottom: 8,
+    color: colors.title,
   },
   empty: {
     textAlign: "center",
-    color: "#666666",
+    color: colors.muted,
     marginTop: 24,
   },
   errorContainer: {
     marginBottom: 12,
   },
   error: {
-    color: "#c0392b",
+    color: colors.danger,
     marginBottom: 8,
   },
 });

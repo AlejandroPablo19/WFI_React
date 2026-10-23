@@ -4,7 +4,7 @@ import { Stack } from "expo-router";
 export default function DeliveryLayout() {
   return (
     <Stack>
-      <Stack.Screen name="index" options={{ title: "Entregas" }} />
+      <Stack.Screen name="index" options={{ title: "Envio" }} />
       <Stack.Screen name="add" options={{ title: "Nueva entrega" }} />
       <Stack.Screen name="[id]" options={{ title: "Detalle de entrega" }} />
       <Stack.Screen name="edit/[id]" options={{ title: "Editar entrega" }} />
