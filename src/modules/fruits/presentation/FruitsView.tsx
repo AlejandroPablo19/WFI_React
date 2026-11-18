@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { Fruit } from "../domain/Fruit";
@@ -84,7 +84,7 @@ export const FruitsView = () => {
 
       {/* Botón secundario: Ir al inicio */}
       <Pressable
-        onPress={() => router.replace("/")}
+        onPress={() => router.replace("/" as Href)}
         style={{
           backgroundColor: "#ffffff",
           borderRadius: 12,

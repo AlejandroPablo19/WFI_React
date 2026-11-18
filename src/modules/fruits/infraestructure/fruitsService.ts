@@ -1,9 +1,8 @@
-import { addDoc, collection, doc, getDoc, getDocs, getFirestore } from 'firebase/firestore';
-import '../../../shared/config/firebase';
+import { addDoc, collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { db } from '@/shared/config/firebase';
 import { Fruit } from '../domain/Fruit';
 
 const COLLECTION = 'fruits';
-const db = getFirestore();
 
 export async function fetchFruits(): Promise<Fruit[]> {
   const snapshot = await getDocs(collection(db, COLLECTION));
