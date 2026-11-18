@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function demoAccessIsActive() {
+      return request.time < timestamp.date(2026, 10, 28);
+    }
+
+    function validWarehouse() {
+      return request.resource.data.keys().hasAll([
+          'name',
+          'location',
+          'capacity',
+          'capacityUnit'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'name',
+          'location',
+          'capacity',
+          'capacityUnit'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
+        && (
+          request.resource.data.capacity is int
+          || request.resource.data.capacity is float
+        )
+        && request.resource.data.capacity >= 0
+        && request.resource.data.capacity <= 1000000000
+        && request.resource.data.capacityUnit is string
+        && request.resource.data.capacityUnit.size() > 0
+        && request.resource.data.capacityUnit.size() <= 30;
+    }
+
+    match /warehouses/{warehouseId} {
+      allow read: if demoAccessIsActive();
+      allow create, update: if demoAccessIsActive() && validWarehouse();
+      allow delete: if demoAccessIsActive();
+    }
+  }
+}

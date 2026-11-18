@@ -54,3 +54,17 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Warehouse module
+
+The app opens the Warehouse module by default. Its Firestore `warehouses`
+collection updates in real time and supports adding, editing, and deleting
+records. Each document contains `name` and `location` strings, a numeric
+`capacity`, and a `capacityUnit` string. Navigation is handled by Expo Router
+with a screen for the list and stack screens for adding and editing a warehouse.
+
+To demonstrate the module without sign-in, publish [`firestore.rules`](./firestore.rules)
+in Firebase Console under Firestore Database > Rules. The temporary rules allow
+public access only to `warehouses`, validate document fields, and expire on
+October 28, 2026. Do not use them in production; replace them with
+authentication-based rules first.
